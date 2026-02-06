@@ -1,240 +1,82 @@
+# Pizza Hub Sales Analysis: Data-Driven Growth Strategy
 
-Query for:
-•	Total revenue
-•	Average order value
-•	Total pizza sold 
-•	Total orders 
-•	Average pizza per order 
+## Project Overview
+In this project, I performed a comprehensive analysis of the transactional data for a pizza restaurant. My goal was to move beyond simple record-keeping and transform raw data into a strategic asset. By applying data cleaning techniques in SQL and advanced visualization in Excel, I identified key performance indicators that drive business growth and operational efficiency.
 
-SELECT 
-    SUM(total_price) AS Total_Revenue,
-    SUM(total_price) / COUNT(DISTINCT order_id) AS Average_Order_Value,
-    SUM(quantity) AS Total_Pizza_Sold,
-    COUNT(DISTINCT order_id) AS Total_Orders,
-    CAST(CAST(SUM(quantity) AS DECIMAL(10,2)) / 
-         CAST(COUNT(DISTINCT order_id) AS DECIMAL(10,2)) AS DECIMAL(10)) AS Avg_Pizzas_Per_Order
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Pizza_Sales;
+## My Problem Statement
+In the competitive quick-service restaurant industry, I observed that Pizza Hub was operating in a data-rich but insight-poor environment. While thousands of transactions were recorded daily, I found that management lacked a clear view of performance trends. 
 
- 
+### Core Issues I Identified:
+* **Operational Blind Spots:** I noticed an inability to pinpoint peak staffing requirements, which leads to service delays during rushes.
+* **Menu Inefficiency:** I saw a lack of clarity on which items were hero products versus inventory drains.
+* **Seasonal Volatility:** I tracked fluctuating monthly revenues with no data-backed strategy to bridge the gaps during slow periods.
 
-Query for daily sales trends 
+## My Objectives
+I built a SQL-to-Excel analytical pipeline to identify high-value growth opportunities through:
+1. Establishing core financial KPIs.
+2. Identifying the annual MVP (Best Seller).
+3. Pinpointing the revenue floor (Lowest Sales Month).
+4. Developing a menu pruning strategy based on the Bottom 5 performers.
 
-SELECT 
-    DATENAME(DW, order_date) AS Day_of_Week, 
-    COUNT(DISTINCT order_id) AS Total_Orders
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY DATENAME(DW, order_date)
-ORDER BY Total_Orders DESC;
+## Tools Used
+* **SQL:** Data Extraction, Cleaning, and Metric Calculation.
+* **Excel:** Pivot Tables, Timelines, and Slicers for interactive reporting.
 
+---
 
- 
+## My SQL Technical Script
+I have grouped my analytical queries here to show the complete logic I used to process the data and generate my insights.
 
-Query for hourly trends for total orders
+```sql
+-- 1. Establishing High-Level KPIs
+-- Total Revenue
+SELECT SUM(total_price) AS Total_Revenue FROM pizza_sales;
 
-SELECT 
-    DATEPART(HOUR, order_time) AS Order_Hour, 
-    COUNT(DISTINCT order_id) AS Total_Orders
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY DATEPART(HOUR, order_time)
-ORDER BY Order_Hour;
- 
+-- Average Order Value
+SELECT SUM(total_price) / COUNT(DISTINCT order_id) AS Avg_Order_Value FROM pizza_sales;
 
-PERCENTAGE OF SALE BY CATEGORY
+-- Total Pizzas Sold
+SELECT SUM(quantity) AS Total_pizza_sold FROM pizza_sales;
 
-Query for percentage of sales by pizza category 
+-- Average Pizzas Per Order
+SELECT CAST(CAST(SUM(quantity) AS DECIMAL(10,2)) / 
+CAST(COUNT(DISTINCT order_id) AS DECIMAL(10,2)) AS DECIMAL(10,2))
+AS Avg_Pizzas_per_order FROM pizza_sales;
 
-SELECT 
-    pizza_category, 
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Total_Revenue,
-    CAST(SUM(total_price) * 100 / (SELECT SUM(total_price) FROM (SELECT DISTINCT * FROM pizza_sales) AS X) AS DECIMAL(10,2)) AS PCT
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Pizza_Sales
-GROUP BY pizza_category
-ORDER BY PCT DESC;
+-- 2. Trend and Seasonal Analysis
+-- Daily Trend for Total Orders
+SELECT DATENAME(DW, order_date) AS order_day, COUNT(DISTINCT order_id) AS total_orders 
+FROM pizza_sales
+GROUP BY DATENAME(DW, order_date);
 
- 
+-- Monthly Trend for Total Orders
+SELECT DATENAME(MONTH, order_date) AS Month_Name, COUNT(DISTINCT order_id) AS Total_Orders
+FROM pizza_sales
+GROUP BY DATENAME(MONTH, order_date);
 
-Query for percentage of sales by pizza category (monthly)
+-- 3. Product and Category Distribution
+-- Percentage of Sales by Pizza Category
+SELECT pizza_category, CAST(SUM(total_price) AS DECIMAL(10,2)) as total_revenue,
+CAST(SUM(total_price) * 100 / (SELECT SUM(total_price) from pizza_sales) AS DECIMAL(10,2)) AS PCT
+FROM pizza_sales
+GROUP BY pizza_category;
 
-SELECT 
-    DATENAME(MONTH, order_date) AS Month_Name,
-    pizza_category,
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Monthly_Category_Revenue,
-    CAST(SUM(total_price) * 100 / 
-         SUM(SUM(total_price)) OVER(PARTITION BY DATENAME(MONTH, order_date)) 
-    AS DECIMAL(10,2)) AS PCT_of_Monthly_Sales
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY DATENAME(MONTH, order_date), pizza_category
-ORDER BY MONTH(MIN(order_date)), PCT_of_Monthly_Sales DESC;
-
- 
-
-Query for percentage of sales by pizza category (Quarterly)
-
-SELECT 
-    DATEPART(QUARTER, order_date) AS Quarter_Number,
-    pizza_category,
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Quarterly_Category_Revenue,
-    CAST(SUM(total_price) * 100 / 
-         SUM(SUM(total_price)) OVER(PARTITION BY DATEPART(QUARTER, order_date)) 
-    AS DECIMAL(10,2)) AS PCT_of_Quarterly_Sales
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY DATEPART(QUARTER, order_date), pizza_category
-ORDER BY Quarter_Number, PCT_of_Quarterly_Sales DESC;
-
- 
-Query for percentage of sales by pizza category (Weekly)
-
-SELECT 
-    DATEPART(WEEK, order_date) AS Week_Number,
-    pizza_category,
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Weekly_Category_Revenue,
-    CAST(SUM(total_price) * 100 / 
-         SUM(SUM(total_price)) OVER(PARTITION BY DATEPART(WEEK, order_date)) 
-    AS DECIMAL(10,2)) AS PCT_of_Weekly_Sales
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY DATEPART(WEEK, order_date), pizza_category
-ORDER BY Week_Number, PCT_of_Weekly_Sales DESC;
- 
-
-Query for percentage of sales by pizza size
-
-SELECT 
-    pizza_size, 
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Total_Revenue,
-    CAST(SUM(total_price) * 100 / (SELECT SUM(total_price) FROM (SELECT DISTINCT * FROM pizza_sales) AS X) AS DECIMAL(10,2)) AS PCT_of_Total_Sales
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
+-- Percentage of Sales by Pizza Size
+SELECT pizza_size, CAST(SUM(total_price) AS DECIMAL(10,2)) as total_revenue,
+CAST(SUM(total_price) * 100 / (SELECT SUM(total_price) from pizza_sales) AS DECIMAL(10,2)) AS PCT
+FROM pizza_sales
 GROUP BY pizza_size
-ORDER BY PCT_of_Total_Sales DESC;
- 
+ORDER BY pizza_size;
 
-Query for total pizzas sold by pizza category
-
-SELECT 
-    pizza_category, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-GROUP BY pizza_category
-ORDER BY Total_Pizzas_Sold DESC;
- 
-
-Query for top 5 best sellers by total pizzas sold
-
-SELECT TOP 5 
-    pizza_name, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
+-- 4. Performance Rankings (Top and Bottom Sellers)
+-- Top 5 Best Sellers by Revenue
+SELECT TOP 5 pizza_name, SUM(total_price) AS Total_Revenue
+FROM pizza_sales
 GROUP BY pizza_name
-ORDER BY Total_Pizzas_Sold DESC;
+ORDER BY Total_Revenue DESC;
 
- 
-
-Query for bottom 5 worst sellers by total pizza sold
-
-SELECT TOP 5 
-    pizza_name, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
+-- Bottom 5 Worst Sellers by Revenue
+SELECT TOP 5 pizza_name, SUM(total_price) AS Total_Revenue
+FROM pizza_sales
 GROUP BY pizza_name
-ORDER BY Total_Pizzas_Sold ASC;
- 
-
-Note 
-To filter for monthly, quarterly and weekly swap:
-•	Monthly: WHERE MONTH(order_date) = 1 (for January)
-•	Quarterly: WHERE DATEPART(QUARTER, order_date) = 1 (for Q1)
-•	Weekly: WHERE DATEPART(WEEK, order_date) = 1 (for Week 1)
-
-Example
-
-Percentage of Sales by Pizza Size
-SELECT 
-    pizza_size, 
-    CAST(SUM(total_price) AS DECIMAL(10,2)) AS Total_Revenue,
-    CAST(SUM(total_price) * 100 / (
-        SELECT SUM(total_price) 
-        FROM (SELECT DISTINCT * FROM pizza_sales) AS X 
-        WHERE MONTH(order_date) = 1 -- Change to Quarter or Week here
-    ) AS DECIMAL(10,2)) AS PCT
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-WHERE MONTH(order_date) = 1 -- Change to Quarter or Week here
-GROUP BY pizza_size
-ORDER BY PCT DESC;
-
-
-Total Pizzas Sold by Pizza Category
-
-SELECT 
-    pizza_category, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-WHERE MONTH(order_date) = 1 -- Filter: Change to Quarter or Week
-GROUP BY pizza_category
-ORDER BY Total_Pizzas_Sold DESC;
-
-Top 5 Best Sellers (by Quantity)
-
-SELECT TOP 5 
-    pizza_name, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-WHERE MONTH(order_date) = 1 -- Filter: Change to Quarter or Week
-GROUP BY pizza_name
-ORDER BY Total_Pizzas_Sold DESC;
-
-Bottom 5 Worst Sellers (by Quantity)
-
-SELECT TOP 5 
-    pizza_name, 
-    SUM(quantity) AS Total_Pizzas_Sold
-FROM (
-    SELECT DISTINCT * FROM pizza_sales
-) AS Clean_Data
-WHERE MONTH(order_date) = 1 -- Filter: Change to Quarter or Week
-GROUP BY pizza_name
-ORDER BY Total_Pizzas_Sold ASC;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ORDER BY Total_Revenue ASC;
